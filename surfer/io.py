@@ -256,7 +256,7 @@ class Surface(object):
         The faces ie. the triangles
     """
 
-    def __init__(self, subject_id, hemi, surf):
+    def __init__(self, subject_id, hemi, surf, subjects_dir=None):
         """Surface
 
         Parameters
@@ -267,17 +267,20 @@ class Surface(object):
             Which hemisphere to load
         surf : string
             Name of the surface to load (eg. inflated, orig ...)
+        subjects_dir : string
+            Path to the subjects freesurfer reconstructions.
+            If None the SUBJECTS_DIR environment variable is used.
         """
         self.subject_id = subject_id
         self.hemi = hemi
         self.surf = surf
 
-        if 'SUBJECTS_DIR' not in os.environ:
-            raise ValueError('Test suite relies on the definition of the '
-                             'SUBJECTS_DIR environment variable')
+        if subjects_dir is None and ('SUBJECTS_DIR' not in os.environ):
+            raise ValueError('SUBJECTS_DIR variable is undefined')
 
-        subj_dir = os.environ["SUBJECTS_DIR"]
-        self.data_path = pjoin(subj_dir, subject_id)
+        if subjects_dir is None:
+            subjects_dir = os.environ["SUBJECTS_DIR"]
+        self.data_path = pjoin(subjects_dir, subject_id)
 
     def load_geometry(self):
         surf_path = pjoin(self.data_path, "surf",

@@ -33,7 +33,8 @@ class Brain(object):
     """Brain object for visualizing with mlab."""
 
     def __init__(self, subject_id, hemi, surf,
-                 curv=True, title=None, config_opts={}):
+                 curv=True, title=None, config_opts={},
+                 subjects_dir=None):
         """Initialize a Brain object with Freesurfer-specific data.
 
         Parameters
@@ -51,6 +52,9 @@ class Brain(object):
             title for the mayavi figure
         config_opts : dict
             options to override visual options in config file
+        subjects_dir : string
+            Path to the subjects freesurfer reconstructions.
+            If None the SUBJECTS_DIR environment variable is used.
         """
         try:
             from mayavi import mlab
@@ -77,7 +81,7 @@ class Brain(object):
         self._f.scene.disable_render = True
 
         # Initialize a Surface object as the geometry
-        self._geo = Surface(subject_id, hemi, surf)
+        self._geo = Surface(subject_id, hemi, surf, subjects_dir=subjects_dir)
 
         # Load in the geometry and (maybe) curvature
         self._geo.load_geometry()
