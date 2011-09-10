@@ -1,41 +1,128 @@
 #! /usr/bin/env python
 """
 This is the top-level command-line interface script for PySurfer.
-It accepts all of the relevant arguments, then turns around and calls
-IPython, executing _pysurfer-load.py with those arguments (which starts
-the visualization), and then drops the user into an IPython environment.
-
 """
-import os
 import sys
-from surfer._commandline import parser
+import os
 
-# Parse the args so that --help exits back to the shell
-# instead of into IPython (this would be cleaner if I
-# could figure out whether that is possible to do
-# from with a script IPython is executing on startup
-if len(sys.argv) < 4:
-    parser.parse_args(["--help"])
-else:
-    args = parser.parse_args()
+if __name__ == '__main__':
+    import argparse
 
-# Make sure this is going to work before we have to
-# boot up mlab/IPython
-if len(sys.argv) > 3:
-    subjects_dir = os.environ['SUBJECTS_DIR']
-    surf_file = os.path.join(subjects_dir, "%s/surf/%s.%s" % tuple(sys.argv[1:4]))
-    if not os.path.exists(surf_file):
-        sys.exit("ERROR: Could not find %s" % surf_file)
+    help_text = """
+    PySurfer is a package for visualization and interaction with cortical
+    surface representations of neuroimaging data from Freesurfer.
 
-# Start IPython and execute the load script
-path = os.path.split(__file__)[0]
-load_file = os.path.join(path, "_pysurfer-load.py")
-import IPython
-if IPython.__version__ < '0.11':
-    flag = '-wthread'
-else:
-    flag = '--gui=%s'%args.gui
-os.system('ipython %s '%flag +
-                   load_file +
-                   ' "%s"'
-                   % ' '.join(sys.argv[1:]))
+    The command-line program pysurfer is designed to largely replicate
+    Freesufer's tksurfer command-line interface in the format and style
+    of arguments it accepts, and, like tksurfer, invoking it will initialize
+    a visualization in an external window and begin an IPython session in the
+    terminal, through which the visualization can be manipulated.
+
+    The visualization interface is exposed through methods on the `brain'
+    variable that will exist in IPython namespace when the program finishes
+    loading. Please see the PySurfer documentation for more information
+    about how to interact with the Brain object.
+
+    """
+
+    parser = argparse.ArgumentParser(prog='pysurfer',
+                      usage='%(prog)s subject_id hemisphere surface [options]',
+                      formatter_class=argparse.RawDescriptionHelpFormatter,
+                      description=help_text)
+    parser.add_argument("subject_id",
+            help="subject id as in subjects dir")
+    parser.add_argument("hemi", metavar="hemi", choices=["lh", "rh"],
+            help="hemisphere to load")
+    parser.add_argument("surf",
+            help="surface mesh (e.g. 'pial', 'inflated')")
+    parser.add_argument("-no-curv", action="store_false", dest="curv",
+            help="do not display the binarized surface curvature")
+    parser.add_argument("-morphometry", metavar="MEAS",
+            help="load morphometry file (e.g. thickness, curvature)")
+    parser.add_argument("-annotation", metavar="ANNOT",
+            help="load annotation (by name or filepath)")
+    parser.add_argument("-label",
+            help="load label (by name or filepath")
+    parser.add_argument("-borders", action="store_true",
+            help="only show label/annot borders (implied by loading other data)")
+    parser.add_argument("-overlay", metavar="FILE",
+            help="load scalar overlay file")
+    parser.add_argument("-range", metavar=('MIN', 'MAX'), nargs=2,
+            help="overlay threshold and saturation point")
+    parser.add_argument("-min", type=float,
+            help="overlay threshold")
+    parser.add_argument("-max", type=float,
+            help="overlay saturation point")
+    parser.add_argument("-sign", default="abs", choices=["abs", "pos", "neg"],
+            help="overlay sign")
+    parser.add_argument("-name",
+            help="name to use for the overlay")
+    parser.add_argument("-size",
+            help="size of the display window (in pixels)")
+    parser.add_argument("-background", metavar="COLOR",
+            help="background color for display")
+    parser.add_argument("-cortex", metavar="COLOR",
+            help="colormap for binary cortex curvature")
+    parser.add_argument("-title",
+            help="title to use for the figure")
+
+    # Make sure this is going to work before we have to
+    # boot up mlab/IPython
+    if len(sys.argv) > 3:
+        subjects_dir = os.environ['SUBJECTS_DIR']
+        surf_file = os.path.join(subjects_dir,
+                                 "%s/surf/%s.%s" % tuple(sys.argv[1:4]))
+        if not os.path.exists(surf_file):
+            sys.exit("ERROR: Could not find %s" % surf_file)
+
+    # args = parser.parse_args(sys.argv[1].split())
+
+    # Parse the args so that --help exits back to the shell
+    # instead of into IPython (this would be cleaner if I
+    # could figure out whether that is possible to do
+    # from with a script IPython is executing on startup
+    if len(sys.argv) < 4:
+        parser.parse_args(["--help"])
+    else:
+        args = parser.parse_args()
+
+    # Get a dict of config override options
+    confkeys = ["size", "background", "cortex"]
+    argdict = args.__dict__
+    config_opts = dict([(k, v) for k, v in argdict.items() if k in confkeys and v])
+
+    from surfer import Brain
+
+    # Load  up the figure and underlying brain object
+    b = Brain(args.subject_id, args.hemi, args.surf, args.curv,
+              args.title, config_opts=config_opts)
+
+    # Maybe load some morphometry
+    if args.morphometry is not None:
+        b.add_morphometry(args.morphometry)
+
+    # Maybe load an overlay
+    if args.overlay is not None:
+        if args.range is not None:
+            args.min, args.max = args.range
+
+        b.add_overlay(args.overlay, args.min, args.max, args.sign)
+
+    # Maybe load an annot
+    if args.annotation is not None:
+        if not args.borders:
+            args.borders = any([args.overlay, args.morphometry])
+        b.add_annotation(args.annotation, args.borders)
+
+    # Maybe load a label
+    if args.label is not None:
+        if not args.borders:
+            args.borders = any([args.overlay, args.morphometry])
+        b.add_label(args.label, args.borders)
+
+    try:
+        from mayavi import mlab
+    except ImportError:
+        from enthought.mayavi import mlab
+
+    mlab.show()
