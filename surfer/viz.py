@@ -1078,16 +1078,14 @@ class Brain(object):
         _check_limits(min, mid, max, extra='')
 
         # Create smoothing matrix if necessary
-        if len(array) < self.geo[hemi].x.shape[0]:
-            if vertices is None:
-                raise ValueError("len(data) < nvtx (%s < %s): the vertices "
-                                 "parameter must not be None"
-                                 % (len(array), self.geo[hemi].x.shape[0]))
-            adj_mat = utils.mesh_edges(self.geo[hemi].faces)
-            smooth_mat = utils.smoothing_matrix(vertices, adj_mat,
-                                                smoothing_steps)
-        else:
-            smooth_mat = None
+        # if len(array) < self.geo[hemi].x.shape[0]:
+        if vertices is None:
+            raise ValueError("len(data) < nvtx: need vertices")
+        adj_mat = utils.mesh_edges(self.geo[hemi].faces)
+        smooth_mat = utils.smoothing_matrix(vertices, adj_mat,
+                                            smoothing_steps)
+        # else:
+        #     smooth_mat = None
 
         magnitude = None
         magnitude_max = None

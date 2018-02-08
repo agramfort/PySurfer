@@ -567,7 +567,7 @@ def smoothing_matrix(vertices, adj_mat, smoothing_steps=20, verbose=None):
     n_vertices = e.shape[0]
     e = e + sparse.eye(n_vertices, n_vertices)
     idx_use = vertices
-    smooth_mat = 1.0
+    smooth_mat = sparse.eye(n_vertices, n_vertices)
     n_iter = smoothing_steps if smoothing_steps is not None else 1000
     for k in range(n_iter):
         e_use = e[:, idx_use]
